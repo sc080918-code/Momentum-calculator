@@ -6,9 +6,35 @@ import streamlit as st
 import yfinance as yf
 
 # ==============================================================================
-# 1. 페이지 기본 설정 및 파일 경로 (Streamlit 자체 모바일 반응형 지원)
+# 1. 페이지 기본 설정 및 모바일 어플(PWA) 이름/아이콘 설정
 # ==============================================================================
-st.set_page_config(page_title="미국 ETF 월별 모멘텀 스코어 계산기", layout="wide")
+# 어플 설치 시 표시될 설정값
+APP_NAME = "모멘텀 스코어 계산기"  # 스마트폰 홈 화면에 표시될 어플 이름
+APP_ICON_URL = "https://cdn-icons-png.flaticon.com/512/2422/2422771.png"  # 어플 아이콘 이미지 URL (원하는 이미지 URL로 변경 가능)
+
+st.set_page_config(
+    page_title=APP_NAME,
+    page_icon=APP_ICON_URL,  # 브라우저 탭 아이콘
+    layout="wide",
+)
+
+# 모바일 '홈 화면에 추가' 및 PWA 관련 HTML 메타 태그 주입
+pwa_html = f"""
+    <head>
+        <!-- 모바일 어플 이름 설정 -->
+        <meta name="apple-mobile-web-app-title" content="{APP_NAME}">
+        <meta name="application-name" content="{APP_NAME}">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        
+        # <!-- 모바일 어플 아이콘 설정 (iOS / Android) -->
+        <link rel="apple-touch-icon" href="{APP_ICON_URL}">
+        <link rel="apple-touch-icon-precomposed" href="{APP_ICON_URL}">
+        <link rel="icon" sizes="192x192" href="{APP_ICON_URL}">
+        <link rel="icon" sizes="512x512" href="{APP_ICON_URL}">
+    </head>
+"""
+st.markdown(pwa_html, unsafe_allow_html=True)
 
 # 모바일 화면 UI 미세 조정을 위한 커스텀 CSS (버튼 상단 여백 정리)
 st.markdown(
@@ -58,7 +84,7 @@ def format_date_to_kor(date_str):
 
 
 # ==============================================================================
-# 2. 세션 상태 안전 초기화 (최상단 배치로 KeyError 방지)
+# 2. 세션 상태 안전 초기화
 # ==============================================================================
 if "monthly_scores_db" not in st.session_state:
     st.session_state["monthly_scores_db"] = load_history()
@@ -402,7 +428,7 @@ if st.session_state["last_search_results"]:
 
 
 # ==============================================================================
-# 7. 전체 누적 종목 월별 모멘텀 점수 비교 표 (Top 3 색상 강조 & 범례 추가)
+# 7. 전체 누적 종목 월별 모멘텀 점수 비교 표
 # ==============================================================================
 if st.session_state["monthly_scores_db"]:
     st.markdown("---")
@@ -431,12 +457,10 @@ if st.session_state["monthly_scores_db"]:
 
     history_df.index = history_df.index + 1
 
-    # 컬럼명을 'YY년 M월 기준'으로 변경한 디스플레이용 데이터프레임
     column_renames = {d: format_date_to_kor(d) for d in date_cols}
     display_df = history_df.rename(columns=column_renames)
     formatted_date_cols = [format_date_to_kor(d) for d in date_cols]
 
-    # 각 월별 열 기준 Top 3 색상 하이라이트 스타일 함수
     def highlight_top3(column):
         if column.name not in formatted_date_cols:
             return [""] * len(column)
@@ -453,28 +477,26 @@ if st.session_state["monthly_scores_db"]:
                 styles.append(
                     "background-color: #d4edda; color: #155724; font-weight:"
                     " bold;"
-                )  # Top 1
+                )
             elif len(sorted_vals) > 1 and val == sorted_vals[1]:
                 styles.append(
                     "background-color: #d1ecf1; color: #0c5460; font-weight:"
                     " bold;"
-                )  # Top 2
+                )
             elif len(sorted_vals) > 2 and val == sorted_vals[2]:
                 styles.append(
                     "background-color: #fff3cd; color: #856404; font-weight:"
                     " bold;"
-                )  # Top 3
+                )
             else:
                 styles.append("")
         return styles
 
-    # 스타일 적용 후 표시
     styled_df = display_df.style.apply(highlight_top3, axis=0).format(
         na_rep="-", precision=2
     )
     st.dataframe(styled_df, use_container_width=True)
 
-    # 표 하단 순위 색상 범례 안내 (HTML 스타일)
     legend_html = """
     <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; font-size: 14px;">
         <span style="font-weight: bold; color: #555;">💡 순위 범례 :</span>
